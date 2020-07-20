@@ -1,6 +1,6 @@
 {
   "name": "@shortfuse/samsungrac",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "NodeJS library for controlling Samsung RAC devices.",
   "main": "index.js",
   "type": "module",
@@ -14,7 +14,7 @@
     "pretest": "eslint . --ignore-path .gitignore",
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node cli/",
-    "samsungac": "node cli/"
+    "samsungrac": "node cli/"
   },
   "author": "clshortfuse@gmail.com",
   "license": "MIT",
