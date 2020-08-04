@@ -1,8 +1,9 @@
 {
   "name": "@shortfuse/samsungrac",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "NodeJS library for controlling Samsung RAC devices.",
   "main": "index.js",
+  "bin": "cli/index.js",
   "type": "module",
   "exports": {
     ".": "index.js",

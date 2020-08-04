@@ -1,7 +1,7 @@
-import { createServer } from 'https';
+import { createServer } from 'http';
 
-export default class Listener {
-  /** @param {import('https').ServerOptions} options */
+export default class HttpServer {
+  /** @param {import('http').ServerOptions} options */
   constructor(options) {
     this.options = { ...options };
     this.server = createServer(this.options);

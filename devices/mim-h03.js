@@ -1,11 +1,14 @@
 import { readFileSync } from 'fs';
 import Requester from '../utils/Requester.js';
-import Listener from '../utils/Listener.js';
+import HttpsServer from '../utils/HttpsServer.js';
+import HttpServer from '../utils/HttpServer.js';
 
 /**
  * @typedef {Object} MIMH03DeviceOptions
  * @prop {string} ip
- * @prop {string} token
+ * @prop {string} [token]
+ * @prop {number} [httpPort=8080]
+ * @prop {number} [httpsPort=8443]
  */
 
 export default class MIMH03Device {
@@ -14,11 +17,15 @@ export default class MIMH03Device {
     this.ip = options.ip;
     this.token = options.token;
     this.buildRequester();
-    this.listener = new Listener({
+    /** @type {HttpServer[]} */
+    this.httpServers = [];
+    this.httpsServer = new HttpsServer({
       minVersion: 'TLSv1',
       pfx: readFileSync('certs/private.pfx'),
       rejectUnauthorized: false,
     });
+    this.httpPort = options.httpPort || 8080;
+    this.httpsPort = options.httpPort || 8443;
   }
 
   buildRequester() {
@@ -90,7 +97,7 @@ export default class MIMH03Device {
    */
   async requestToken() {
     return new Promise((resolve, reject) => {
-      this.listener.server.on('request', /** @type {import('http').RequestListener} */ (req, res) => {
+      this.httpsServer.server.on('request', /** @type {import('http').RequestListener} */ (req, res) => {
         let data = '';
         req.on('data', (chunk) => {
           data += chunk;
@@ -102,11 +109,48 @@ export default class MIMH03Device {
         res.statusCode = 200;
         res.end('OK');
       });
-      this.listener.listen({
+      this.httpsServer.listen({
         host: '0.0.0.0',
-        port: 8889,
+        port: this.httpsPort,
       }).then(() => this.requester.post('/devicetoken/request')).catch(reject);
     });
+  }
+
+  async proxy() {
+    const devices = await this.getDevices();
+    const listeners = devices.Devices.map((device, index) => {
+      const httpServer = new HttpServer({});
+      /**
+       * @param {import('http').IncomingMessage} req
+       * @param {import('http').ServerResponse} res
+       * @return {void}
+       */
+      const onRequest = (req, res) => {
+        let data = '';
+        req.on('data', (chunk) => {
+          data += chunk;
+        });
+        req.on('end', () => {
+          const newUrl = (index === 0 ? req.url : `/devices/${device.id}${req.url}`);
+          this.requester.sendRequest(newUrl, /** @type {any} */ (req.method), data)
+            .then((result) => {
+              const content = JSON.stringify(result);
+              res.writeHead(200, {
+                'Content-Length': content.length.toString(),
+                'Content-Type': 'application/json; charset=utf-8',
+              });
+              res.end(content);
+            }).catch((error) => {
+              res.writeHead(error.statusCode || 500);
+              res.end(error.message);
+            });
+        });
+      };
+      httpServer.server.on('request', onRequest);
+      this.httpServers.push(httpServer);
+      return httpServer.listen({ host: '0.0.0.0', port: this.httpPort + index });
+    });
+    await Promise.all(listeners);
   }
 }
 

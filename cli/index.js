@@ -10,6 +10,9 @@ const argumentList = [
   ['temp', 'Desired temperature'],
   ['mode', 'Desired mode'],
   ['speed', 'Desired fan speed'],
+  ['proxy', 'Creates an HTTP server that proxies requests'],
+  ['httpport', 'HTTP listening port'],
+  ['httpsport', 'HTTPS listening port'],
   ['requesttoken', 'Listens for and requests device token'],
 ];
 
@@ -59,6 +62,8 @@ for (let i = 0; i < args.length; i += 1) {
 const controller = new MIMH03Device({
   ip: entries.get('ip'),
   token: entries.get('token'),
+  httpPort: Number.parseInt(entries.get('httpport'), 10) || null,
+  httpsPort: Number.parseInt(entries.get('httpsport'), 10) || null,
 });
 
 async function run() {
@@ -146,6 +151,13 @@ async function run() {
     const output = requestedDevice ? info.Devices.find((d) => d.id === target.id) : info;
     stdout.write(JSON.stringify(output, null, 2));
     stdout.write('\n');
+  }
+
+  if (entries.has('proxy')) {
+    await controller.proxy();
+    const minPort = controller.httpPort;
+    const maxPort = (controller.httpPort + controller.httpServers.length - 1);
+    stdout.write(`Proxy is running on ${minPort}${minPort !== maxPort ? `-${maxPort}` : ''}...\n`);
   }
 }
 

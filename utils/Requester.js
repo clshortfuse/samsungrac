@@ -8,14 +8,24 @@ export default class Requester {
   }
 
   /**
+   * @param {Object|string} content
+   * @return {string}
+   */
+  static parseContentArgument(content) {
+    if (!content) return '';
+    if (typeof content === 'string') return content;
+    return JSON.stringify(content);
+  }
+
+  /**
    * @param {string} path
    * @param {'GET'|'POST'|'PUT'} [method='GET'|'POST']
-   * @param {Object} [content]
+   * @param {Object|string} [content]
    * @return {Promise<Object>}
    */
   async sendRequest(path, method, content) {
     const parsedMethod = method ?? (content ? 'POST' : 'GET');
-    const parsedContent = (content == null) ? '' : JSON.stringify(content);
+    const parsedContent = Requester.parseContentArgument(content);
     return new Promise((resolve, reject) => {
       const req = request({
         ...this.options,
@@ -42,7 +52,10 @@ export default class Requester {
               resolve(data);
             }
           } else {
-            reject(new Error(`${res.statusCode}: ${data}`));
+            /** @type {Error & {statusCode:number}} */
+            const error = (new Error(data));
+            error.statusCode = res.statusCode;
+            reject(error);
           }
         });
       });
@@ -61,7 +74,7 @@ export default class Requester {
 
   /**
    * @param {string} path
-   * @param {Object} [content]
+   * @param {Object|string} [content]
    * @return {Promise<Object>}
    */
   async post(path, content) {
@@ -70,7 +83,7 @@ export default class Requester {
 
   /**
    * @param {string} path
-   * @param {Object} [content]
+   * @param {Object|string} [content]
    * @return {Promise<Object>}
    */
   async put(path, content) {
